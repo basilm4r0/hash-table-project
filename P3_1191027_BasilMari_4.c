@@ -78,6 +78,7 @@ typedef struct {
 	int size_index;
 	int size;
 	int count;
+	int collisions;
 	ht_item** items;
 } ht_hash_table;
 
@@ -191,6 +192,7 @@ static ht_hash_table* ht_new_sized(const int base_size) {
     ht->size = next_prime(ht->size_index);
 
     ht->count = 0;
+	ht->collisions = 0;
     ht->items = xcalloc((size_t)ht->size, sizeof(ht_item*));
     return ht;
 }
@@ -237,11 +239,6 @@ static void ht_resize_up(ht_hash_table* ht) {
     ht_resize(ht, new_size);
 }
 
-static void ht_resize_down(ht_hash_table* ht) {
-    const int new_size = ht->size_index / 2;
-    ht_resize(ht, new_size);
-}
-
 void ht_insert(ht_hash_table* ht, const char* name, int credits, const char* code, const char* department, const char* topics) {
 	const int load = ht->count * 100 / ht->size;
     if (load > 70) {
@@ -262,6 +259,7 @@ void ht_insert(ht_hash_table* ht, const char* name, int credits, const char* cod
         index = ht_get_hash(item->name, ht->size, i);
         cur_item = ht->items[index];
         i++;
+		ht->collisions++;
     }
     ht->items[index] = item;
     ht->count++;
@@ -366,16 +364,16 @@ void print_hash(ht_hash_table* ht){
 
 void save_hash(ht_hash_table* ht){
 	FILE* out;
-	out = fopen("saved_courses.txt", "w");
+	out = fopen("saved_courses.txt", "rw");
     for(int i=0; i<ht->size; i++){
 		if(ht->items[i] != NULL) {
 			if(ht->items[i] != &HT_DELETED_ITEM )
 				fprintf(out, "At index: %d   %s  %d  %s  %s  %s\n", i, ht->items[i]->name, ht->items[i]->credits, ht->items[i]->code, ht->items[i]->department,ht->items[i]->topics);
 			else
-				printf("At index: %d        \n",i);
+				fprintf(out, "At index: %d        \n",i);
         }
 		else
-			printf("At index: %d        \n",i);
+			fprintf(out, "At index: %d        \n",i);
 	}
 }
 
@@ -403,7 +401,9 @@ int main() {
 		switch (option) {
 
 			case (1):			//Option 1: Load courses from courses.txt into a tree
+				printf("Double hashing table:\n");
 				print_hash(ht);
+				printf("\nLinear collision handling table:\n");
 				print_hash(ht_linear);
 				break;
 
@@ -465,6 +465,7 @@ int main() {
 				break;
 
 			case (7):			// Option 7: Delete a course from the tree
+				printf("Double hash table collisions: %d\nLinear hash table collisions: %d\n", ht->collisions, ht_linear->collisions);
 				break;
 
 			case (8):			// Option 8: Delete all courses that start with a specific letter
