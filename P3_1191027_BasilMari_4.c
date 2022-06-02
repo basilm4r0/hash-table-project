@@ -5,10 +5,10 @@
 #include <math.h>
 #include <sys/types.h>
 
-int HT_INITIAL_BASE_SIZE = 20;
+int HT_INITIAL_BASE_SIZE = 10;
 int numOfData = 0;
-int HT_PRIME_1 = 23;
-int HT_PRIME_2 = 29;
+int HT_PRIME_1 = 13;
+int HT_PRIME_2 = 17;
 int NumOfData = 0;
 
 static void *xmalloc_fatal(size_t size) {
@@ -141,6 +141,11 @@ static int ht_get_hash(const char* s, const int num_buckets, const int attempt) 
 	return (hash_a + (attempt * hash_b)) % num_buckets; // Not adding 1 to hash_b here
 }
 
+static int ht_get_hash_linear(const char* s, const int num_buckets, const int attempt) {
+    const int hash_a = ht_hash(s, HT_PRIME_1, num_buckets);
+	return (hash_a + attempt % num_buckets); // Not adding 1 to hash_b here
+}
+
 void ht_delete(ht_hash_table* ht, const char* name) {
     int index = ht_get_hash(name, ht->size, 0);
     ht_item* item = ht->items[index];
@@ -155,6 +160,25 @@ void ht_delete(ht_hash_table* ht, const char* name) {
             }
         }
         index = ht_get_hash(name, ht->size, i);
+        item = ht->items[index];
+        i++;
+    }
+}
+
+void ht_delete_linear(ht_hash_table* ht, const char* name) {
+    int index = ht_get_hash_linear(name, ht->size, 0);
+    ht_item* item = ht->items[index];
+    int i = 1;
+    while (item != NULL) {
+        if (item != &HT_DELETED_ITEM) {
+            if (strcmp(item->name, name) == 0) {
+                ht_del_item(item);
+                ht->items[index] = &HT_DELETED_ITEM;
+				ht->count--;
+                return;
+            }
+        }
+        index = ht_get_hash_linear(name, ht->size, i);
         item = ht->items[index];
         i++;
     }
@@ -243,6 +267,31 @@ void ht_insert(ht_hash_table* ht, const char* name, int credits, const char* cod
     ht->count++;
 }
 
+void ht_insert_linear(ht_hash_table* ht, const char* name, int credits, const char* code, const char* department, const char* topics) {
+	const int load = ht->count * 100 / ht->size;
+    if (load > 70) {
+        ht_resize_up(ht);
+    }
+    ht_item* item = ht_new_item(name, credits, code, department, topics);
+    int index = ht_get_hash_linear(item->name, ht->size, 0);
+    ht_item* cur_item = ht->items[index];
+    int i = 1;
+    while (cur_item != NULL) {
+        if (cur_item != &HT_DELETED_ITEM) {
+            if (strcmp(cur_item->name, name) == 0) {
+                ht_del_item(cur_item);
+                ht->items[index] = item;
+                return;
+            }
+        }
+        index = ht_get_hash_linear(item->name, ht->size, i);
+        cur_item = ht->items[index];
+        i++;
+    }
+    ht->items[index] = item;
+    ht->count++;
+}
+
 ht_item* ht_search(ht_hash_table* ht, const char* name) {
     int index = ht_get_hash(name, ht->size, 0);
     ht_item* item = ht->items[index];
@@ -260,7 +309,24 @@ ht_item* ht_search(ht_hash_table* ht, const char* name) {
     return NULL;
 }
 
-void load_data(ht_hash_table* ht){
+ht_item* ht_search_linear(ht_hash_table* ht, const char* name) {
+    int index = ht_get_hash_linear(name, ht->size, 0);
+    ht_item* item = ht->items[index];
+    int i = 1;
+    while (item != NULL) {
+		if (item != &HT_DELETED_ITEM) {
+			if (strcmp(item->name, name) == 0) {
+				return item;
+			}
+		}
+        index = ht_get_hash_linear(name, ht->size, i);
+        item = ht->items[index];
+        i++;
+    }
+    return NULL;
+}
+
+void load_data(ht_hash_table* ht, ht_hash_table* ht_linear){
 	FILE* in;
 	char name[64];
 	int credits;
@@ -279,6 +345,7 @@ void load_data(ht_hash_table* ht){
 			strncpy(department, strtok(NULL,"/"), 64);
 			strncpy(topics, strtok(NULL,"\n"), 256);
 			ht_insert(ht, name, credits, code, department, topics);
+			ht_insert_linear(ht_linear, name, credits, code, department, topics);
 		}
 	}
 	fclose(in);
@@ -325,7 +392,8 @@ int main() {
 
 	ht_item* item;
     ht_hash_table* ht = ht_new();
-	load_data(ht);
+    ht_hash_table* ht_linear = ht_new();
+	load_data(ht, ht_linear);
 
 	printf("\nEnter a number to perform one of the following operations:\n1. Print hash table\n2. Print hash table size and load factor.\n3. Print hash function.\n4. Add course to hash table.\n5. Find course in hash table.\n6. Delete course.\n7. Compare number of collisions between two hashing methods.\n8. Save hash table to saved_courses.txt.\n9. Exit program.\n");
 	do {
@@ -336,6 +404,7 @@ int main() {
 
 			case (1):			//Option 1: Load courses from courses.txt into a tree
 				print_hash(ht);
+				print_hash(ht_linear);
 				break;
 
 			case (2):			//Option 2: Add a new course to tree
@@ -367,6 +436,7 @@ int main() {
 				TrimNewline(input);
 				strcpy(topics, input);
 				ht_insert(ht, name, credits, code, department, topics);
+				ht_insert_linear(ht, name, credits, code, department, topics);
 				break;
 
 			case (5):			// Option 5: Print course information of a specific course
@@ -387,6 +457,7 @@ int main() {
 				strcpy(name, input);
 				if (ht_search(ht, name) != NULL) {
 					ht_delete(ht, name);
+					ht_delete_linear(ht,name);
 					printf("Course deleted.\n");
 				}
 				else
