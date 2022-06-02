@@ -60,6 +60,12 @@ int next_prime(int x) {
     return x;
 }
 
+int TrimNewline(char string[]) {
+	if ((strlen(string) > 0) && (string[strlen (string) - 1] == '\n'))
+		string[strlen (string) - 1] = '\0';
+	return 1;
+}
+
 typedef struct {
     char* name;
 	int credits;
@@ -108,7 +114,7 @@ static void ht_del_item(ht_item* i) {
 void ht_del_hash_table(ht_hash_table* ht) {
     for (int i = 0; i < ht->size; i++) {
         ht_item* item = ht->items[i];
-        if (item != NULL) {
+        if (item != NULL && item != & HT_DELETED_ITEM) {
             ht_del_item(item);
         }
     }
@@ -255,7 +261,7 @@ ht_item* ht_search(ht_hash_table* ht, const char* name) {
 }
 
 void load_data(ht_hash_table* ht){
-	FILE *in;
+	FILE* in;
 	char name[64];
 	int credits;
 	char code[16];
@@ -282,7 +288,22 @@ void print_hash(ht_hash_table* ht){
     for(int i=0; i<ht->size; i++){
 		if(ht->items[i] != NULL) {
 			if(ht->items[i] != &HT_DELETED_ITEM )
-				printf("At index: %d   %s  %d  %s  %s  %s", i, ht->items[i]->name, ht->items[i]->credits, ht->items[i]->code, ht->items[i]->department,ht->items[i]->topics);
+				printf("At index: %d   %s  %d  %s  %s  %s\n", i, ht->items[i]->name, ht->items[i]->credits, ht->items[i]->code, ht->items[i]->department,ht->items[i]->topics);
+			else
+				printf("At index: %d        \n",i);
+        }
+		else
+			printf("At index: %d        \n",i);
+	}
+}
+
+void save_hash(ht_hash_table* ht){
+	FILE* out;
+	out = fopen("saved_courses.txt", "w");
+    for(int i=0; i<ht->size; i++){
+		if(ht->items[i] != NULL) {
+			if(ht->items[i] != &HT_DELETED_ITEM )
+				fprintf(out, "At index: %d   %s  %d  %s  %s  %s\n", i, ht->items[i]->name, ht->items[i]->credits, ht->items[i]->code, ht->items[i]->department,ht->items[i]->topics);
 			else
 				printf("At index: %d        \n",i);
         }
@@ -292,8 +313,102 @@ void print_hash(ht_hash_table* ht){
 }
 
 int main() {
+	int option;
+	char name[64];
+	int credits;
+	char code[16];
+	char department[64];
+	char topics[256];
+	char input[256];
+	int load;
+
+
+	ht_item* item;
     ht_hash_table* ht = ht_new();
 	load_data(ht);
-	print_hash(ht);
+
+	printf("\nEnter a number to perform one of the following operations:\n1. Print hash table\n2. Print hash table size and load factor.\n3. Print hash function.\n4. Add course to hash table.\n5. Find course in hash table.\n6. Delete course.\n7. Compare number of collisions between two hashing methods.\n8. Save hash table to saved_courses.txt.\n9. Exit program.\n");
+	do {
+		printf("Option: ");		//Printing prompt and reading user input
+		fgets(input, 63, stdin);
+		sscanf(input, "%d", &option);
+		switch (option) {
+
+			case (1):			//Option 1: Load courses from courses.txt into a tree
+				print_hash(ht);
+				break;
+
+			case (2):			//Option 2: Add a new course to tree
+				load = ht->count * 100 / ht->size;
+				printf("Hash table size: %d,\tload factor: %d%%\n", ht->size, load);
+				break;
+
+			case (3):			//Option 3: Update course information for a node
+				printf("double hash function:\n");
+				printf("for (int i = 0; i < len_s; i++) {\n\thash += (long) pow(a, len_s - (i+1)) * s[i];\n\thash = hash %% m;\n}\n");
+				break;
+
+			case (4):			//Option 4: Print all course information in lexicographic order
+				printf("New course name: ");
+				fgets(input, 63, stdin);
+				TrimNewline(input);
+				strcpy(name, input);
+				printf("Credit hours: ");
+				fgets(input, 63, stdin);
+				sscanf(input, "%d", &credits);
+				printf("Couse code: ");
+				fgets(input, 15, stdin);
+				sscanf(input, "%15s", code);
+				printf("Department: ");
+				fgets(input, 63, stdin);
+				sscanf(input, "%63s", department);
+				printf("Course topics: ");
+				fgets(input, 255, stdin);
+				TrimNewline(input);
+				strcpy(topics, input);
+				ht_insert(ht, name, credits, code, department, topics);
+				break;
+
+			case (5):			// Option 5: Print course information of a specific course
+				printf("Course name: ");
+				fgets(input, 63, stdin);
+				TrimNewline(input);
+				strcpy(name, input);
+				if ((item = ht_search(ht, name)) == NULL)
+					printf("Course does not exit!\n");
+				else
+					printf("Course information:   %s  %d  %s  %s  %s\n", item->name, item->credits, item->code, item->department, item->topics);
+				break;
+
+			case (6):			// Option 6: Print course information of all courses within a department
+				printf("Course name: ");
+				fgets(input, 63, stdin);
+				TrimNewline(input);
+				strcpy(name, input);
+				if (ht_search(ht, name) != NULL) {
+					ht_delete(ht, name);
+					printf("Course deleted.\n");
+				}
+				else
+					printf("Course doesn't exist!");
+				break;
+
+			case (7):			// Option 7: Delete a course from the tree
+				break;
+
+			case (8):			// Option 8: Delete all courses that start with a specific letter
+				save_hash(ht);
+				break;
+
+			case (9):			// Option 11: Exit program
+				printf("Exiting program...\n");
+				break;
+
+			default:			// Default option: print error message and prompt user for valid input
+				printf("Option invalid. Please enter a valid option.\n");
+				break;
+		}
+	} while(option != 9); //check if exit option has been chosen
+
     ht_del_hash_table(ht);
 }
