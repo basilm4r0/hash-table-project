@@ -389,7 +389,7 @@ void print_hash(ht_hash_table* ht){
 //prints hash table to saved_courses.txt
 void save_hash(ht_hash_table* ht){
 	FILE* out;
-	out = fopen("saved_courses.txt", "rw");
+	out = fopen("saved_courses.txt", "w");
     for(int i=0; i<ht->size; i++){
 		if(ht->items[i] != NULL) {
 			if(ht->items[i] != &HT_DELETED_ITEM )
@@ -461,7 +461,7 @@ int main() {
 				TrimNewline(input);
 				strcpy(topics, input);
 				ht_insert(ht, name, credits, code, department, topics);
-				ht_insert_linear(ht, name, credits, code, department, topics);
+				ht_insert_linear(ht_linear, name, credits, code, department, topics);
 				break;
 
 			case (5):			// Option 5: Find course in hash table
@@ -482,7 +482,7 @@ int main() {
 				strcpy(name, input);
 				if (ht_search(ht, name) != NULL) {
 					ht_delete(ht, name);
-					ht_delete_linear(ht,name);
+					ht_delete_linear(ht_linear,name);
 					printf("Course deleted.\n");
 				}
 				else
