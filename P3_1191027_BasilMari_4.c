@@ -1,3 +1,5 @@
+// COMP2421 Project 3 by Basil Mari     Student ID: 1191027     Date: 2/6/2022      Section: 4
+
 #include <stdio.h>
 #include <stdlib.h>
 #define _SVID_SOURCE
