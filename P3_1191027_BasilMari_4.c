@@ -159,7 +159,7 @@ static int ht_get_hash(const char* s, const int num_buckets, const int attempt) 
 //linear hashing functions
 static int ht_get_hash_linear(const char* s, const int num_buckets, const int attempt) {
     const int hash_a = ht_hash(s, HT_PRIME_1, num_buckets);
-	return (hash_a + attempt % num_buckets); // Not adding 1 to hash_b here
+	return ((hash_a + attempt) % num_buckets); // Not adding 1 to hash_b here
 }
 
 //finds item in double hashed hash table and deletes it
